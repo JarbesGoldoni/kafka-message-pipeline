@@ -1,0 +1,260 @@
+# Kafka Message Pipeline with Docker Compose
+
+A complete demonstration of a Kafka-based message pipeline using Docker Compose, featuring real-time message streaming between microservices with modern web interfaces.
+
+## 🏗️ Architecture Overview
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Frontend      │    │   Input         │    │     Kafka       │
+│  (Message       │───►│   Service       │───►│   (Messages     │
+│   Sender)       │    │  (Node.js)      │    │    Topic)       │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                                        │
+┌─────────────────┐    ┌─────────────────┐              │
+│   Frontend      │◄───│   Listener      │◄─────────────┘
+│  (Message       │    │   Service       │
+│   Display)      │    │ (Node.js +      │
+└─────────────────┘    │  WebSocket)     │
+                       └─────────────────┘
+```
+
+## 🚀 Features
+
+- **Real-time Message Streaming**: Messages appear instantly on the display page
+- **WebSocket & SSE Support**: Dual communication protocols for maximum compatibility
+- **Docker Compose Orchestration**: One command to run the entire system
+- **Modern UI**: Beautiful, responsive frontend with animations and live updates
+- **Health Monitoring**: Built-in health checks and connection status
+- **Graceful Error Handling**: Comprehensive error handling and retry logic
+- **Auto-scroll & Message Management**: Smart UI features for better UX
+
+## 📁 Project Structure
+
+```
+kafka-message-pipeline/
+├── docker-compose.yml          # Main orchestration file
+├── nginx.conf                  # Nginx configuration
+├── input-service/
+│   ├── Dockerfile
+│   ├── package.json
+│   └── server.js              # Message producer service
+├── listener-service/
+│   ├── Dockerfile
+│   ├── package.json
+│   └── server.js              # Message consumer service
+└── frontend/
+    ├── index.html             # Message sender page
+    └── display.html           # Message display page
+```
+
+## 🛠️ Setup Instructions
+
+### Prerequisites
+
+- Docker and Docker Compose installed
+- Ports 8080, 9092, 3001, 3002 available
+
+### Quick Start
+
+1. **Clone the project structure**:
+   ```bash
+   mkdir kafka-message-pipeline
+   cd kafka-message-pipeline
+   ```
+
+2. **Create the directory structure**:
+   ```bash
+   mkdir -p input-service listener-service frontend
+   ```
+
+3. **Copy all the provided files** to their respective directories
+
+4. **Start the entire system**:
+   ```bash
+   docker-compose up --build
+   ```
+
+5. **Access the application**:
+   - **Message Sender**: http://localhost:8080
+   - **Message Display**: http://localhost:8080/display.html
+
+### Manual Setup Steps
+
+If you prefer to set up step by step:
+
+1. **Create input-service files**:
+   - `input-service/package.json`
+   - `input-service/server.js`
+   - `input-service/Dockerfile`
+
+2. **Create listener-service files**:
+   - `listener-service/package.json`
+   - `listener-service/server.js`
+   - `listener-service/Dockerfile`
+
+3. **Create frontend files**:
+   - `frontend/index.html`
+   - `frontend/display.html`
+
+4. **Create configuration files**:
+   - `docker-compose.yml`
+   - `nginx.conf`
+
+## 🎯 How to Use
+
+1. **Start the services**:
+   ```bash
+   docker-compose up -d
+   ```
+
+2. **Send messages**:
+   - Open http://localhost:8080
+   - Enter a username and message
+   - Click "Send Message"
+
+3. **View messages in real-time**:
+   - Open http://localhost:8080/display.html (can be in another browser tab/window)
+   - Watch messages appear instantly as they're sent
+
+4. **Monitor the system**:
+   ```bash
+   # View logs
+   docker-compose logs -f
+   
+   # Check service health
+   curl http://localhost:3001/health
+   curl http://localhost:3002/health
+   ```
+
+## 🔧 Configuration
+
+### Environment Variables
+
+**Input Service**:
+- `KAFKA_BROKER`: Kafka broker address (default: `kafka:29092`)
+- `PORT`: Service port (default: `3001`)
+
+**Listener Service**:
+- `KAFKA_BROKER`: Kafka broker address (default: `kafka:29092`)
+- `PORT`: Service port (default: `3002`)
+
+### Kafka Configuration
+
+- **Topic**: `messages-topic` (auto-created)
+- **Consumer Group**: `message-display-group`
+- **Replication Factor**: 1 (suitable for development)
+
+## 🧪 Testing
+
+### Send a test message via API:
+```bash
+curl -X POST http://localhost:3001/api/messages \
+  -H "Content-Type: application/json" \
+  -d '{"username": "testuser", "message": "Hello Kafka!"}'
+```
+
+### Test Server-Sent Events:
+```bash
+curl -N http://localhost:3002/api/events
+```
+
+### Check Kafka topics:
+```bash
+docker exec -it kafka kafka-topics --bootstrap-server localhost:9092 --list
+```
+
+## 🛡️ Production Considerations
+
+For production deployment, consider:
+
+1. **Security**:
+   - Enable Kafka SASL/SSL
+   - Add authentication to APIs
+   - Use HTTPS with proper certificates
+
+2. **Scalability**:
+   - Increase Kafka partitions
+   - Scale consumer instances
+   - Add load balancing
+
+3. **Monitoring**:
+   - Add Prometheus metrics
+   - Implement distributed tracing
+   - Set up alerting
+
+4. **Data Persistence**:
+   - Configure Kafka data retention
+   - Add message persistence layer
+   - Implement backup strategies
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+1. **Services not starting**:
+   ```bash
+   docker-compose down
+   docker-compose up --build --force-recreate
+   ```
+
+2. **Kafka connection issues**:
+   - Wait for Kafka to fully initialize (30-60 seconds)
+   - Check logs: `docker-compose logs kafka`
+
+3. **WebSocket connection failed**:
+   - Ensure port 3002 is accessible
+   - Check firewall settings
+   - Verify CORS configuration
+
+4. **Messages not appearing**:
+   - Check producer logs: `docker-compose logs input-service`
+   - Check consumer logs: `docker-compose logs listener-service`
+   - Verify Kafka topic exists
+
+### Useful Commands
+
+```bash
+# View all service logs
+docker-compose logs -f
+
+# Restart specific service
+docker-compose restart input-service
+
+# View Kafka consumer groups
+docker exec -it kafka kafka-consumer-groups --bootstrap-server localhost:9092 --list
+
+# Reset consumer group (careful!)
+docker exec -it kafka kafka-consumer-groups --bootstrap-server localhost:9092 --group message-display-group --reset-offsets --to-earliest --topic messages-topic --execute
+```
+
+## 📚 Learning Resources
+
+This project demonstrates:
+- **Microservices Architecture**: Service separation and communication
+- **Message Queues**: Asynchronous message processing with Kafka
+- **Real-time Communication**: WebSocket and Server-Sent Events
+- **Containerization**: Docker and Docker Compose
+- **API Design**: RESTful services and error handling
+- **Frontend Development**: Modern JavaScript and responsive design
+
+## 🤝 Contributing
+
+Feel free to extend this project by adding:
+- Message persistence with databases
+- User authentication and authorization
+- Message filtering and search
+- File upload capabilities
+- Additional message formats (images, files)
+- Monitoring dashboards
+- Load testing scenarios
+
+## 📄 License
+
+This project is provided as a learning resource and demonstration. Feel free to use and modify for educational purposes.
+
+---
+
+**Happy Learning! 🎉**
+
+This project provides a solid foundation for understanding distributed systems, message queues, and real-time web applications.

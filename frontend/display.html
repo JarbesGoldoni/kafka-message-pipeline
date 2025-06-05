@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kafka Message Display</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            min-height: calc(100vh - 40px);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e1e5e9;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 2rem;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .connection-status {
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .connection-status.connected {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .connection-status.disconnected {
+            background: #f44336;
+            color: white;
+        }
+
+        .connection-status.connecting {
+            background: #2196F3;
+            color: white;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            text-align: center;
+            padding: 15px;
+            background: linear-gradient(45deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border-radius: 12px;
+            min-width: 120px;
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .messages-container {
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 15px;
+            padding: 20px;
+            max-height: 60vh;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+
+        .message {
+            background: white;
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            transform: translateX(-20px);
+            opacity: 0;
+            animation: slideInMessage 0.5s ease forwards;
+            border-left: 4px solid #667eea;
+        }
+
+        @keyframes slideInMessage {
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .username {
+            font-weight: 700;
+            color: #667eea;
+            font-size: 1.1rem;
+        }
+
+        .timestamp {
+            font-size: 0.8rem;
+            color: #666;
+            background: #f8f9fa;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        .message-content {
+            color: #333;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            padding: 40px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .button.primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .button.secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .auto-scroll-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 24px;
+            background: #ccc;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .toggle-switch.active {
+            background: #667eea;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(26px);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+            }
+            
+            .stats {
+                gap: 15px;
+            }
+            
+            .stat {
+                min-width: 100px;
+                padding: 10px;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .button {
+                justify-content: center;
+            }
+        }
+
+        /* Custom scrollbar */
+        .messages-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .messages-container::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 4px;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb:hover {
+            background: #5a6fd8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📥 Live Messages</h1>
+            <div id="connectionStatus" class="connection-status connecting">
+                <span class="status-dot"></span>
+                Connecting...
+            </div>
+            
+            <div class="stats">
+                <div class="stat">
+                    <div id="messageCount" class="stat-number">0</div>
+                    <div class="stat-label">Messages</div>
+                </div>
+                <div class="stat">
+                    <div id="connectionTime" class="stat-number">--</div>
+                    <div class="stat-label">Connected</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="messagesContainer" class="messages-container">
+            <div class="empty-state">
+                <p>🔄 Waiting for messages...</p>
+                <p>Send a message from the sender page to see it appear here in real-time!</p>
+            </div>
+        </div>
+
+        <div class="controls">
+            <a href="index.html" class="button secondary">
+                📤 Send Message
+            </a>
+            
+            <div class="auto-scroll-toggle">
+                <span>Auto-scroll</span>
+                <div id="autoScrollToggle" class="toggle-switch active">
+                    <div class="toggle-slider"></div>
+                </div>
+            </div>
+            
+            <button id="clearMessages" class="button secondary">
+                🗑️ Clear
+            </button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <script>
+        const LISTENER_SERVICE_URL = 'http://localhost:3002';
+        
+        class MessageDisplay {
+            constructor() {
+                this.socket = null;
+                this.messages = [];
+                this.connectionStartTime = null;
+                this.autoScroll = true;
+                this.connectionTimer = null;
+                
+                this.initializeElements();
+                this.setupEventListeners();
+                this.connectToServer();
+            }
+            
+            initializeElements() {
+                this.messagesContainer = document.getElementById('messagesContainer');
+                this.connectionStatus = document.getElementById('connectionStatus');
+                this.messageCount = document.getElementById('messageCount');
+                this.connectionTime = document.getElementById('connectionTime');
+                this.autoScrollToggle = document.getElementById('autoScrollToggle');
+                this.clearButton = document.getElementById('clearMessages');
+            }
+            
+            setupEventListeners() {
+                this.autoScrollToggle.addEventListener('click', () => {
+                    this.autoScroll = !this.autoScroll;
+                    this.autoScrollToggle.classList.toggle('active', this.autoScroll);
+                });
+                
+                this.clearButton.addEventListener('click', () => {
+                    this.clearMessages();
+                });
+            }
+            
+            connectToServer() {
+                try {
+                    this.socket = io(LISTENER_SERVICE_URL, {
+                        transports: ['websocket', 'polling'],
+                        timeout: 10000,
+                        forceNew: true
+                    });
+                    
+                    this.socket.on('connect', () => {
+                        this.handleConnection();
+                    });
+                    
+                    this.socket.on('connected', (data) => {
+                        console.log('Server confirmed connection:', data);
+                    });
+                    
+                    this.socket.on('new-message', (messageData) => {
+                        this.addMessage(messageData);
+                    });
+                    
+                    this.socket.on('disconnect', () => {
+                        this.handleDisconnection();
+                    });
+                    
+                    this.socket.on('connect_error', (error) => {
+                        console.error('Connection error:', error);
+                        this.updateConnectionStatus('disconnected', 'Connection failed');
+                    });
+                    
+                } catch (error) {
+                    console.error('Failed to initialize socket:', error);
+                    this.updateConnectionStatus('disconnected', 'Failed to connect');
+                }
+            }
+            
+            handleConnection() {
+                this.connectionStartTime = new Date();
+                this.updateConnectionStatus('connected', 'Connected');
+                this.startConnectionTimer();
+                console.log('✅ Connected to message stream');
+            }
+            
+            handleDisconnection() {
+                this.updateConnectionStatus('disconnected', 'Disconnected');
+                this.stopConnectionTimer();
+                console.log('❌ Disconnected from message stream');
+                
+                // Attempt to reconnect after 3 seconds
+                setTimeout(() => {
+                    if (this.socket && !this.socket.connected) {
+                        this.updateConnectionStatus('connecting', 'Reconnecting...');
+                        this.socket.connect();
+                    }
+                }, 3000);
+            }
+            
+            updateConnectionStatus(status, text) {
+                this.connectionStatus.className = `connection-status ${status}`;
+                this.connectionStatus.innerHTML = `<span class="status-dot"></span>${text}`;
+            }
+            
+            startConnectionTimer() {
+                this.connectionTimer = setInterval(() => {
+                    if (this.connectionStartTime) {
+                        const duration = Math.floor((Date.now() - this.connectionStartTime) / 1000);
+                        const minutes = Math.floor(duration / 60);
+                        const seconds = duration % 60;
+                        this.connectionTime.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                    }
+                }, 1000);
+            }
+            
+            stopConnectionTimer() {
+                if (this.connectionTimer) {
+                    clearInterval(this.connectionTimer);
+                    this.connectionTimer = null;
+                    this.connectionTime.textContent = '--';
+                }
+            }
+            
+            addMessage(messageData) {
+                // Remove empty state if it exists
+                const emptyState = this.messagesContainer.querySelector('.empty-state');
+                if (emptyState) {
+                    emptyState.remove();
+                }
+                
+                this.messages.push(messageData);
+                this.updateMessageCount();
+                
+                const messageElement = this.createMessageElement(messageData);
+                this.messagesContainer.appendChild(messageElement);
+                
+                if (this.autoScroll) {
+                    this.scrollToBottom();
+                }
+                
+                // Limit messages to prevent memory issues
+                if (this.messages.length > 100) {
+                    this.messages.shift();
+                    const firstMessage = this.messagesContainer.querySelector('.message');
+                    if (firstMessage) {
+                        firstMessage.remove();
+                    }
+                }
+            }
+            
+            createMessageElement(messageData) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message';
+                
+                const timestamp = new Date(messageData.timestamp).toLocaleString();
+                
+                messageDiv.innerHTML = `
+                    <div class="message-header">
+                        <span class="username">${this.escapeHtml(messageData.username)}</span>
+                        <span class="timestamp">${timestamp}</span>
+                    </div>
+                    <div class="message-content">${this.escapeHtml(messageData.message)}</div>
+                `;
+                
+                return messageDiv;
+            }
+            
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+            
+            scrollToBottom() {
+                this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+            }
+            
+            updateMessageCount() {
+                this.messageCount.textContent = this.messages.length;
+            }
+            
+            clearMessages() {
+                this.messages = [];
+                this.messagesContainer.innerHTML = `
+                    <div class="empty-state">
+                        <p>🧹 Messages cleared!</p>
+                        <p>New messages will appear here as they arrive.</p>
+                    </div>
+                `;
+                this.updateMessageCount();
+            }
+        }
+        
+        // Initialize the message display when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new MessageDisplay();
+        });
+    </script>
+</body>
+</html>
